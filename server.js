@@ -11,7 +11,7 @@ const firebaseAdmin = require("firebase-admin")
 const Services = require("./Services")
 
 firebaseAdmin.initializeApp({
-    credential: firebaseAdmin.credential.cert(require("./project-wizz-firebase-adminsdk.json")),
+    credential: firebaseAdmin.credential.cert(require("./teamcookapp-firebase-adminsdk-wy5fr-7d862ab83c.json")),
 })
 
 const server = new Hapi.Server()
