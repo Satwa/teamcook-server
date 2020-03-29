@@ -1,5 +1,5 @@
 require('dotenv').config()
-const { Op } = require('sequelize')
+const { Op }    = require('sequelize')
 const SequelizeManager = require('./classes/SequelizeManager')
 const sequelize = new SequelizeManager()
 
