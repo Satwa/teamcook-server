@@ -1,14 +1,12 @@
 require('dotenv').config()
-// import SequelizeManager from './classes/SequelizeManager'
-
 const Hapi      = require("hapi")
 const Boom      = require("boom")
 const hapiJWT   = require("hapi-auth-jwt2")
-const { Op } = require('sequelize')
+const { Op }    = require('sequelize')
 const SequelizeManager = require('./classes/SequelizeManager')
-const sequelize = new SequelizeManager()
+const sequelize     = new SequelizeManager()
 const firebaseAdmin = require("firebase-admin")
-const Services = require("./Services")
+const Services      = require("./Services")
 
 firebaseAdmin.initializeApp({
     credential: firebaseAdmin.credential.cert(require("./teamcookapp-firebase-adminsdk-wy5fr-7d862ab83c.json")),
@@ -62,10 +60,20 @@ server.register([
             User.build(data)
                 .save()
                 .then((res) => {
-                    Services.assignHuggerToHuggy(data)
+                    // Services.assignHuggerToHuggy(data)
                     reply(true)
                 })
                 .catch((err) => console.log(err))
+        }
+    })
+
+    server.route({
+        method: 'GET',
+        path: '/check/username/{username}',
+        handler: async (req, reply) => {
+            const user = await sequelize.User.findOne({ where: { username: req.params.username } })
+
+            reply(user === null)
         }
     })
 

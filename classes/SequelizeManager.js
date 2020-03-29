@@ -14,20 +14,10 @@ class SequelizeManager{
                 type: Sequelize.STRING, // ID given by Firebase when authenticating
                 primaryKey: true
             },
-            authorized: {
-                type: Sequelize.BOOLEAN,
-                defaultValue: false // false for hugger but true for huggy
-            },
+            username: Sequelize.STRING,
             birthdate: Sequelize.BIGINT,
-            maxchild: {
-                type: Sequelize.INTEGER,
-                defaultValue: 3
-            },
-            name: Sequelize.STRING,
+            displayname: Sequelize.STRING,
             picture: Sequelize.STRING,
-            sex: Sequelize.STRING,
-            story: Sequelize.STRING,
-            type: Sequelize.STRING,
             deviceToken: Sequelize.STRING
         })
     
