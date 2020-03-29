@@ -57,7 +57,7 @@ server.register([
         handler: (req, reply) => {
             const data = req.payload
 
-            User.build(data)
+            sequelize.User.build(data)
                 .save()
                 .then((res) => {
                     // Services.assignHuggerToHuggy(data)
