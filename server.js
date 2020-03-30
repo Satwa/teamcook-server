@@ -34,6 +34,7 @@ server.register([
     if(err) throw err
     server.auth.strategy('firebase', 'firebase', { firebaseAdmin })
 
+    // Check user authentication
     server.route({
         method: 'GET',
         path: '/auth',
@@ -45,6 +46,7 @@ server.register([
         }
     })
 
+    // Create a new user
     server.route({
         method: 'POST',
         path: '/user',
@@ -67,6 +69,7 @@ server.register([
         }
     })
 
+    // Check if a username is available
     server.route({
         method: 'GET',
         path: '/check/username/{username}',
@@ -77,6 +80,7 @@ server.register([
         }
     })
 
+    // Check if user exists
     server.route({
         method: 'GET',
         path: '/user/exists/{id}',
@@ -93,6 +97,7 @@ server.register([
         }
     })
 
+    // Get authenticated user profile (TODO: fetch friends & rooms)
     server.route({
         method: 'GET',
         path: '/user/me',
@@ -100,11 +105,133 @@ server.register([
             auth: 'firebase'
         },
         handler: async (req, reply) => {
-            const user = await sequelize.User.findOne({ where: { authID: req.auth.credentials.user_id } })
-            reply(JSON.stringify(user))
+            try{
+                const user = await sequelize.User.findOne({ 
+                    where: { 
+                        authID: req.auth.credentials.user_id 
+                    }
+                })
+                reply(JSON.stringify(user))
+            }catch(err) {
+                console.log(err)
+                reply(Boom.badImplementation())
+            }
+        }
+    })
+    // Get authenticated user friends
+    server.route({
+        method: 'GET',
+        path: '/user/me/friends',
+        config: {
+            auth: 'firebase'
+        },
+        handler: async (req, reply) => {
+            try{
+                const friends = await sequelize.Friend.findAll({
+                    where: {
+                        [Op.or]: [
+                            {
+                                user1: req.auth.credentials.user_id
+                            },
+                            {
+                                user2: req.auth.credentials.user_id
+                            }
+                        ]
+                    },
+                    include: [{model: sequelize.User, as: 'friend_1'}, {model: sequelize.User, as: 'friend_2'}]
+                })
+                reply(JSON.stringify(friends))
+            }catch(err) {
+                console.log(err)
+                reply(Boom.badImplementation())
+            }
         }
     })
 
+    // Find user (search feature)
+    server.route({
+        method: 'POST',
+        path: '/user/find',
+        config: {
+            auth: 'firebase'
+        },
+        handler: async (req, reply) => {
+            const data = req.payload
+
+            const users = await sequelize.User.findAll({ 
+                where: { 
+                    username: {
+                        [Op.like]: `%${data.username}%`
+                    }
+                },
+                attributes: ['authID', 'username', 'displayname', 'picture']
+            })
+            reply(JSON.stringify(users))
+        }
+    })
+
+
+
+    // Request user friendship
+    server.route({
+        method: 'POST',
+        path: '/user/friendrequest',
+        config: {
+            auth: 'firebase'
+        },
+        handler: async (req, reply) => {
+            const data = req.payload
+            /**
+             * Payload:
+             *  - user_id (requsted not requestee)
+             *  - type [new, accept, decline, delete]
+             */
+            const friendship = await sequelize.Friend.findOne({
+                where: {
+                    [Op.or]: [
+                        {
+                            [Op.and]: [
+                                { user1: req.auth.credentials.user_id }, 
+                                { user2: req.params.user_id }
+                            ]
+                        },
+                        {
+                            [Op.and]: [
+                                { user2: req.auth.credentials.user_id },
+                                { user1: req.params.user_id },
+                            ]
+                        }
+                    ]
+                }
+            })
+
+            if(friendshipState){ // They're friend so we unfriend
+                if(req.params.type == "decline" || req.params.type == "remove"){
+                    friendship.destroy()
+                }else if(req.params.type == "accept"){
+                    friendship.update({
+                        status: "11"
+                    })
+                }
+            }else{
+                // New request
+                if(req.params.type == "new"){
+                    sequelize.Friend
+                        .build({
+                            user1: req.auth.credentials.user_id,
+                            user2: req.params.user_id,
+                            status: "10"
+                        })
+                        .save()
+                    // TODO: Send notification to the requested
+                }
+            }
+            reply(true)
+        }
+    })
+
+
+    // Get specific user profile
     server.route({
         method: 'GET',
         path: '/user/{id}',
@@ -113,32 +240,19 @@ server.register([
         },
         handler: async (req, reply) => {
             try{
-                // Check if requester has access to requested by looking for chat relation
-                    // If true, link is proved so we grant access to profile
-                const chatExists = await sequelize.Chat.findOne({ 
-                    where: { 
+                // return username & @
+                const user = await sequelize.User.findOne({
+                    where: {
                         [Op.or]: [
-                            {
-                                [Op.and]: [
-                                    { user1: req.auth.credentials.user_id }, 
-                                    { user2: req.params.id }
-                                ]
-                            },
-                            {
-                                [Op.and]: [
-                                    { user2: req.auth.credentials.user_id },
-                                    { user1: req.params.id },
-                                ]
-                            }
+                            {authID: req.params.id}, 
+                            {id: req.params.id}
                         ]
-                    } 
+                    },
+                    attributes: ['authID', 'username', 'displayname', 'picture'],
+                    include: [sequelize.Friend, {model: User, as: "user1"}, {model: User, as: "user2"}]
                 })
-                if(chatExists){ // TODO: query by authID only
-                    const user = await sequelize.User.findOne({ where: { [Op.or]: [{ authID: req.params.id }, { id: req.params.id }] } })
-                    reply(JSON.stringify(user)) // TODO: This is not secure, some fields should not be shared publicly
-                }else{
-                    reply(Boom.unauthorized())
-                }
+
+                reply(user)
             }catch(err){
                 console.log(err)
                 reply(Boom.internal())
@@ -146,6 +260,7 @@ server.register([
         }
     })
 
+    // Change settings of authenticated user
     server.route({
         method: 'POST',
         path: '/user/edit',
@@ -176,7 +291,6 @@ LIVE API:
     - update accordingly
     - save in database
     - save in memcache
-
 ///
 
 Microservices :
@@ -186,5 +300,3 @@ Microservices :
  - quickActions Triggerer (text analysis)
  - chatbot
 */
-
-// Services.assignHuggerToHuggy({ type: "huggy", authID: "I6aQREjHKINZlkF8ljGmEIB2bv73"})

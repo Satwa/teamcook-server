@@ -21,24 +21,43 @@ class SequelizeManager{
             deviceToken: Sequelize.STRING
         })
     
-        this.Chat = this.connection.define("chats", {
+        this.Friend = this.connection.define("friends", {
             user1: Sequelize.STRING,
-            user2: Sequelize.STRING
+            user2: Sequelize.STRING,
+            status: {
+                type: Sequelize.STRING,
+                defaultValue: '00'
+            }
         })
     
-        this.Message = this.connection.define("messages", {
+        this.Room = this.connection.define("rooms", {
+            recipe: Sequelize.STRING
+        })
+
+        this.RoomUser = this.connection.define("rooms_users", {
+            room_id: Sequelize.STRING, 
+            user_id: Sequelize.STRING
+        })
+
+        this.Message = this.connection.define("rooms_messages", {
+            room_id: Sequelize.STRING,
+            sender_id: Sequelize.STRING,
             message: Sequelize.STRING
         })
     
-        this.Chat.belongsTo(this.User, {foreignKey: "user1", as: "hugger"})
-        this.Chat.belongsTo(this.User, {foreignKey: "user2", as: "huggy"})
-        this.Chat.hasMany(this.Message, {foreignKey: "chat_id"})
-        this.Message.belongsTo(this.Chat, {foreignKey: "chat_id"})
-        this.User.hasMany(this.Message, {foreignKey: "sender_id"})
+        // this.User.hasMany(this.Friend, { foreignKey: 'authID' })
+        this.Room.hasMany(this.RoomUser, { foreignKey: 'room_id' })
+        this.RoomUser.hasOne(this.User, { foreignKey: 'user_id' })
+        this.RoomUser.belongsTo(this.Room, { foreignKey: 'room_id' })
+        this.Friend.belongsTo(this.User, {foreignKey: "user1", as: "friend_1"})
+        this.Friend.belongsTo(this.User, {foreignKey: "user2", as: "friend_2"})
         this.Message.belongsTo(this.User, {foreignKey: "sender_id"})
+        this.Message.belongsTo(this.Room, {foreignKey: "room_id"})
     
         this.User.sync()
-        this.Chat.sync()
+        this.Friend.sync()
+        this.Room.sync()
+        this.RoomUser.sync()
         this.Message.sync()
     }
 }
