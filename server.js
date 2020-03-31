@@ -186,47 +186,52 @@ server.register([
              *  - user_id (requsted not requestee)
              *  - type [new, accept, decline, delete]
              */
-            const friendship = await sequelize.Friend.findOne({
-                where: {
-                    [Op.or]: [
-                        {
-                            [Op.and]: [
-                                { user1: req.auth.credentials.user_id }, 
-                                { user2: req.params.user_id }
-                            ]
-                        },
-                        {
-                            [Op.and]: [
-                                { user2: req.auth.credentials.user_id },
-                                { user1: req.params.user_id },
-                            ]
-                        }
-                    ]
-                }
-            })
-
-            if(friendshipState){ // They're friend so we unfriend
-                if(req.params.type == "decline" || req.params.type == "remove"){
-                    friendship.destroy()
-                }else if(req.params.type == "accept"){
-                    friendship.update({
-                        status: "11"
-                    })
-                }
-            }else{
-                // New request
-                if(req.params.type == "new"){
-                    sequelize.Friend
-                        .build({
-                            user1: req.auth.credentials.user_id,
-                            user2: req.params.user_id,
-                            status: "10"
+            try{
+                const friendship = await sequelize.Friend.findOne({
+                    where: {
+                        [Op.or]: [
+                            {
+                                [Op.and]: [
+                                    { user1: req.auth.credentials.user_id }, 
+                                    { user2: data.user_id }
+                                ]
+                            },
+                            {
+                                [Op.and]: [
+                                    { user2: req.auth.credentials.user_id },
+                                    { user1: data.user_id },
+                                ]
+                            }
+                        ]
+                    }
+                })
+    
+                if(friendship){ // They're friend
+                    if(data.type == "decline" || data.type == "remove"){
+                        friendship.destroy()
+                    }else if(data.type == "accept"){
+                        friendship.update({
+                            status: 1
                         })
-                        .save()
-                    // TODO: Send notification to the requested
+                    }
+                }else{ // They're not friend
+                    // New request
+                    if(data.type == "new"){
+                        sequelize.Friend
+                            .build({
+                                user1: req.auth.credentials.user_id,
+                                user2: data.user_id,
+                                status: 0
+                            })
+                            .save()
+                        // TODO: Send notification to the requested
+                    }
                 }
+                reply(true)
+            }catch(err){
+                console.log(err)
+                reply(Boom.badImplementation())
             }
-            reply(true)
         }
     })
 
