@@ -76,8 +76,6 @@ class AllRecipes(object):
 		ingredients = soup.findAll("li", {"class": "checkList__line"})
 		steps = soup.findAll("span", {"class": "recipe-directions__list--item"})
 		
-		print(soup.findAll("h1"))
-		
 		name = soup.find("h1", {"class": "recipe-summary__h1"}).get_text().replace("®", "")
 
 		direction_data = soup.find("div", {"class": "directions--section__steps"})

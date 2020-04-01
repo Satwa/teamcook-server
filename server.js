@@ -8,6 +8,7 @@ const sequelize     = new SequelizeManager()
 const firebaseAdmin = require("firebase-admin")
 const Services      = require("./Services")
 const spawn         = require("child_process").spawn
+const recipeScraper = require("recipe-scraper")
 
 firebaseAdmin.initializeApp({
     credential: firebaseAdmin.credential.cert(require("./teamcookapp-firebase-adminsdk-wy5fr-7d862ab83c.json")),
@@ -314,19 +315,27 @@ server.register([
         },
         handler: (req, reply) => {
             const data = req.payload
-            console.log(data.arg)
-            const crawler = spawn('python3', [`./crawlers/${data.platform}/crawler.py`, "-d", data.arg])
-            crawler.stdout.on('data', (data) => {
-                // Do something with the data returned from python script
-                console.log(data)
-                reply(data)
-            })
 
-            crawler.stderr.on('data', (data) => {
-                console.log("Error get recipe details, dump args: " + JSON.stringify(req.payload))
-                console.log(data.toString())
-                reply({})
-            })
+            if(data.platform == "allrecipes"){
+                recipeScraper(data.arg).then(_recipe => {
+                    const recipe = _recipe
+                    recipe.steps = _recipe.instructions
+                }).catch(error => {
+                    console.log(error)
+
+                    reply({})
+                })
+            }else{
+                const crawler = spawn('python3', [`./crawlers/${data.platform}/crawler.py`, "-d", data.arg])
+                crawler.stdout.on('data', (data) => {
+                    reply(data)
+                })
+    
+                crawler.stderr.on('data', (data) => {
+                    console.log("Error get recipe details, dump args: " + JSON.stringify(req.payload))
+                    reply({})
+                })
+            }
         }
     })
 
