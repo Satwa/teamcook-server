@@ -5,3 +5,8 @@ settings.json
 .vscode
 useless/
 *.db
+
+__pycache__/
+dist/
+build/
+*.egg-info/

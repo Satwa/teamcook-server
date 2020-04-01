@@ -7,6 +7,7 @@ const SequelizeManager = require('./classes/SequelizeManager')
 const sequelize     = new SequelizeManager()
 const firebaseAdmin = require("firebase-admin")
 const Services      = require("./Services")
+const spawn         = require("child_process").spawn
 
 firebaseAdmin.initializeApp({
     credential: firebaseAdmin.credential.cert(require("./teamcookapp-firebase-adminsdk-wy5fr-7d862ab83c.json")),
@@ -276,6 +277,59 @@ server.register([
             // TODO
         }
     })
+    
+    /**
+     * 
+     * RECIPE RELATED
+     * 
+     * ./crawlers/{allrecipes|marmiton}/crawler.py -l "keywords"
+     * ./crawlers/{allrecipes|marmiton}/crawler.py -d [url]
+     * ---------------------------------------------------------
+     */
+    server.route({
+        method: 'POST',
+        path: '/recipe/find',
+        config: {
+            auth: 'firebase'
+        },
+        handler: (req, reply) => {
+            const data = req.payload
+            const crawler = spawn('python3', [`./crawlers/${data.platform}/crawler.py`, "-l", data.arg])
+            crawler.stdout.on('data', (data) => {
+                // Do something with the data returned from python script
+                reply(data)
+            })
+
+            crawler.stderr.on('data', (data) => {
+                console.log("Error find recipe, dump args: " + JSON.stringify(req.payload))
+                reply({})
+            })
+        }
+    })
+    server.route({
+        method: 'POST',
+        path: '/recipe/details',
+        config: {
+            auth: 'firebase'
+        },
+        handler: (req, reply) => {
+            const data = req.payload
+            console.log(data.arg)
+            const crawler = spawn('python3', [`./crawlers/${data.platform}/crawler.py`, "-d", data.arg])
+            crawler.stdout.on('data', (data) => {
+                // Do something with the data returned from python script
+                console.log(data)
+                reply(data)
+            })
+
+            crawler.stderr.on('data', (data) => {
+                console.log("Error get recipe details, dump args: " + JSON.stringify(req.payload))
+                console.log(data.toString())
+                reply({})
+            })
+        }
+    })
+
 
     server.start(() => console.log("Server up and running on port " + process.env.PORT))
 })
