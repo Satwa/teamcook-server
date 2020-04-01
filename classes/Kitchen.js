@@ -3,6 +3,7 @@ export default class Kitchen {
         this.id = id
         this.users = [...users]
         this.recipe = recipe
+        this.step = 0
     }
 
     // TODO: fetch recipe
