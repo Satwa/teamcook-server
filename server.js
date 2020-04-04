@@ -303,7 +303,8 @@ server.register([
 
             crawler.stderr.on('data', (data) => {
                 console.log("Error find recipe, dump args: " + JSON.stringify(req.payload))
-                reply({})
+                console.log(data.toString())
+                reply([])
             })
         }
     })
@@ -320,10 +321,12 @@ server.register([
                 recipeScraper(data.arg).then(_recipe => {
                     const recipe = _recipe
                     recipe.steps = _recipe.instructions
+                    delete recipe.instructions
+                    reply(recipe)
                 }).catch(error => {
                     console.log(error)
 
-                    reply({})
+                    reply([])
                 })
             }else{
                 const crawler = spawn('python3', [`./crawlers/${data.platform}/crawler.py`, "-d", data.arg])
@@ -333,7 +336,7 @@ server.register([
     
                 crawler.stderr.on('data', (data) => {
                     console.log("Error get recipe details, dump args: " + JSON.stringify(req.payload))
-                    reply({})
+                    reply([])
                 })
             }
         }
