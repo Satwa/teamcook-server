@@ -1,4 +1,4 @@
-export default class Kitchen {
+class Kitchen {
     constructor(id, users, recipe){
         this.id = id
         this.users = [...users]
@@ -8,3 +8,5 @@ export default class Kitchen {
 
     // TODO: fetch recipe
 }
+
+module.exports = Kitchen
