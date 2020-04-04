@@ -2,6 +2,7 @@ require('dotenv').config()
 const { Op }    = require('sequelize')
 const SequelizeManager = require('./classes/SequelizeManager')
 const sequelize = new SequelizeManager()
+const Kitchen = require("./classes/Kitchen")
 
 exports.register = function (server, options, next) {
     let io = require('socket.io')(server.listener)
@@ -10,6 +11,7 @@ exports.register = function (server, options, next) {
 
     let kitchens = []
     let users    = []
+
 
     io
         .use(async (socket, next) => {
@@ -28,65 +30,91 @@ exports.register = function (server, options, next) {
             }
         })
         .on('connection', async function (socket) {
-            console.log('[DEBUG] LIVE API: New connection')
+            // console.log('[DEBUG] LIVE API: New connection')
 
             const user = await sequelize.User.findOne({ where: { authID: socket.decoded.user_id } })
 
             socket.user    = user
             socket.kitchen = null
 
-            users.push(socket)
+            if(users.find($0 => $0.user.authID == user.authID) !== undefined){
+                // User exists, first unset then add
+                users.splice(
+                    users.findIndex($0 => $0.user.authID == user.authID),
+                    1
+                )
+            }
 
-            socket.on('joinKitchen', (call_data, room_id, user_id, recipe) => {
+            users.push(socket)
+            console.log(`[Joining] ${user.username} => ${socket.id}`)
+
+            socket.on('joinKitchen', (data) => {
                 // user_id could be an array later for group chat
                 // room_id is a UUID (@teamcook/uuid)
-                const kitchen = kitchens.find($0 => $0.id == room_id)
+                const kitchen = kitchens.find($0 => $0.id == data.room_id)
                 if(!kitchen){
                     // We are creating a new kitchen
                     // New kitchen, we have to contact user_id
-                    kitchens.push(new Kitchen(room_id, [socket.user.authID], recipe))
-                    socket.kitchen = kitchen
-                    socket.join(room_id)
+                    const newKitchen = new Kitchen(data.room_id, [socket.user.authID], data.recipe)
+                    kitchens.push(newKitchen)
+                    socket.kitchen = newKitchen
+                    socket.join(data.room_id)
 
                     // Contact the other user
-                    const receiver = users.find($0 => $0.user.authID == user_id).id
+                    const receiver = users.find($0 => $0.user.authID == data.user_id)
                     if(receiver){
+                        console.log(`[Ask for call] ${socket.user.username} => ${receiver.user.username}`)
+                        console.log(receiver.id)
                         io
-                            .in(receiver) // this room is socket.id of the other user
-                            .emit("requestForKitchen", ...call_data, room_id)
+                            .to(receiver.id) // this room is socket.id of the other user
+                            .emit("requestForKitchen", {
+                                call_data: data.call_data, 
+                                room_id: data.room_id, 
+                                recipe: socket.kitchen.recipe
+                            })
                     }else{
-                        socket.emit('error', { message: 'The other user is not connected' })
+                        socket.emit('unexpected', { message: 'The other user is not connected' })
+                        // Try to contact them with a notification and set a 2mn timeout
+                        console.log("error — user not connected")
                     }
                 }else{
+                    console.log("kitchen exists")
                     // Kitchen exists
                     if(kitchen.users.length < 2){
+                        console.log("Kitchen exists, joining")
                         kitchen.users.push(socket.user.authID)
                         socket.kitchen = kitchen
-                        socket.join(room_id)
-                        io.in(room_id).emit('newUserInKitchen', ...call_data, socket.user.authID)
+                        socket.join(kitchen.id)
+                        io.in(kitchen.id).emit('newUserInKitchen', {call_data: data.call_data, userId: socket.user.authID})
                     }else{
-                        socket.emit('error', { message: 'The kitchen you\'re trying to join is full!'})
+                        socket.emit('unexpected', { message: 'The kitchen you\'re trying to join is full!'})
                         console.log("Kitchen is full")
                     }
                 }
             })
 
-            socket.on('disconnect', function() {
+            socket.on("kitchenNewCandidate", (data) => {
+                io.in(data.room_id).emit('kitchenNewCandidate', {...data})
+            })
+
+            socket.on('disconnect', () => {
+                console.log(`[Disconnecting] ${user.username} => ${socket.id}`)
                 if(socket.kitchen !== null){
                     socket.leave(socket.kitchen.id)
                 }
                 if(socket.user !== null){
-                    const indexInUsers = users.findIndex($0 => $0.authID == socket.user.authID)
+                    const indexInUsers = users.findIndex($0 => $0.user.authID == socket.user.authID)
                     users.splice(indexInUsers, 1)
                 }
             })
 
-            socket.on('leave', function() {
+            socket.on('leave', () => {
+                console.log(`[Leaving] ${user.username} => ${socket.id}`)
                 if(socket.kitchen !== null){
                     socket.leave(socket.kitchen.id)
                 }
                 if(socket.user !== null){
-                    const indexInUsers = users.findIndex($0 => $0.authID == socket.user.authID)
+                    const indexInUsers = users.findIndex($0 => $0.user.authID == socket.user.authID)
                     users.splice(indexInUsers, 1)
                 }
             })
@@ -101,7 +129,7 @@ exports.register = function (server, options, next) {
             //     socket.user.update({
             //         picture: data.picture
             //     })
-            //     // Once updated, send to the chatroom
+            //     // on updated, send to the chatroom
             //     io.to("chatroom" + socket.chatrooms[0].id).emit("moodUpdated", { room: "chatroom" + socket.chatrooms[0].id, picture: data.picture })
             // })
 
