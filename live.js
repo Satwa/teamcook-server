@@ -65,7 +65,7 @@ exports.register = function (server, options, next) {
                     if(receiver){
                         console.log(`[Ask for call] ${socket.user.username} => ${receiver.user.username}`)
                         console.log(receiver.id)
-                        io
+                        socket
                             .to(receiver.id) // this room is socket.id of the other user
                             .emit("requestForKitchen", {
                                 call_data: data.call_data, 
@@ -78,14 +78,13 @@ exports.register = function (server, options, next) {
                         console.log("error — user not connected")
                     }
                 }else{
-                    console.log("kitchen exists")
                     // Kitchen exists
                     if(kitchen.users.length < 2){
                         console.log("Kitchen exists, joining")
                         kitchen.users.push(socket.user.authID)
                         socket.kitchen = kitchen
                         socket.join(kitchen.id)
-                        io.in(kitchen.id).emit('newUserInKitchen', {call_data: data.call_data, userId: socket.user.authID})
+                        socket.to(kitchen.id).emit('newUserInKitchen', {call_data: data.call_data, user_id: socket.user.authID})
                     }else{
                         socket.emit('unexpected', { message: 'The kitchen you\'re trying to join is full!'})
                         console.log("Kitchen is full")
@@ -94,7 +93,8 @@ exports.register = function (server, options, next) {
             })
 
             socket.on("kitchenNewCandidate", (data) => {
-                io.in(data.room_id).emit('kitchenNewCandidate', {...data})
+                console.log("adding ice candidate")
+                io.to(data.room_id).emit('kitchenNewCandidate', {...data})
             })
 
             socket.on('disconnect', () => {
