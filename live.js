@@ -93,8 +93,17 @@ exports.register = function (server, options, next) {
             })
 
             socket.on("kitchenNewCandidate", (data) => {
-                console.log("adding ice candidate")
-                io.to(data.room_id).emit('kitchenNewCandidate', {...data})
+                if(!data.candidate) return
+                socket.to(data.room_id).emit('kitchenNewCandidate', {...data})
+            })
+
+            socket.on("renegotiateKitchen", (data) => {
+                console.log("renegotiation needed")
+                socket.to(data.room_id).emit("renegotiateKitchen", {...data})
+            })
+            socket.on("renegotiatedKitchen", (data) => {
+                console.log("renegotiation done")
+                socket.to(data.room_id).emit("renegotiatedKitchen", {...data})
             })
 
             socket.on('disconnect', () => {
