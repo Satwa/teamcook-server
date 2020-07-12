@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/Satwa/teamcook-server#readme",
   "dependencies": {
-    "assert": "^1.4.1",
+    "assert": "^2.0.0",
     "boom": "^5.2.0",
     "child_process": "^1.0.2",
     "dotenv": "^8.2.0",
