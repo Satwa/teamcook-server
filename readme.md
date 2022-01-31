@@ -1,6 +1,6 @@
 # teamcook-server
 
-Handling backend of TeamCook and the signaling server for WebRTC
+Handling backend of TeamCook and the signaling server for WebRTC. API Keys have been revoked :)
 
 ### Task to go from scratch to up&running:
 ```npm install```
